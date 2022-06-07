@@ -13,15 +13,18 @@ import (
 // test data: username=zhanglei, password=douyin
 
 // this will be deleted soon, and you do not have a test user in the beginning, please register then test
-var usersLoginInfo = map[string]User{
-	"zhangleidouyin": {
-		Id:            1,
-		Name:          "zhanglei",
-		FollowCount:   10,
-		FollowerCount: 5,
-		IsFollow:      true,
-	},
-}
+//var usersLoginInfo = map[string]User{
+//	"zhangleidouyin": {
+//		Id:            1,
+//		Name:          "zhanglei",
+//		FollowCount:   10,
+//		FollowerCount: 5,
+//		IsFollow:      true,
+//	},
+//}
+
+//This is the loginInfo for the current user
+var loginInfo UserLoginInfo
 
 type UserLoginResponse struct {
 	Response
@@ -44,7 +47,8 @@ func Register(c *gin.Context) {
 	var existingUser User
 	//check whether there exists a user with the same username
 	err := Db.Where("name = ?", username).First(&existingUser).Error
-	//if not, it means that the new username is valid, and we are ready to register
+	//if not, it means that the new username is valid.
+	//then the newUser information will be stored in the users table and the user_login_infos table.
 	fmt.Println(err)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		newUser := User{
@@ -76,10 +80,9 @@ func Login(c *gin.Context) {
 	username := c.Query("username")
 	password := c.Query("password")
 	token := username + password
-	var loginInfo UserLoginInfo
 	err := Db.Where("token = ?", token).First(&loginInfo).Error
 
-	// check if the account is stored in the database
+	// check if the account is stored in the user_login_infos table
 	// if yes, then we can allow the user to login
 	if err == nil {
 		c.JSON(http.StatusOK, UserLoginResponse{
@@ -100,9 +103,11 @@ func Login(c *gin.Context) {
 }
 
 func UserInfo(c *gin.Context) {
+	// check token with the tokens stored in the user_login_infos table.
+	// if it exists in the table, return User to the server.
+	// otherwise, return errors
 	token := c.Query("token")
-	var loginInfo UserLoginInfo
-	err := Db.Where("token = ?", token).First(&loginInfo).Error
+	err := Db.Table("user_login_infos").Where("token = ?", token).Limit(1).Error
 	if err == nil {
 		c.JSON(http.StatusOK, UserResponse{
 			Response: Response{StatusCode: 0},

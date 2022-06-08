@@ -1,12 +1,12 @@
 package controller
-var MysqlConnectionLink string
+const MysqlConnectionLink string
 
 //Aliyun OSS information
 //see details at "https://help.aliyun.com/document_detail/32145.html"
-var OSSAccessKeyID string
-var OSSAccessSecret string
-var BucketName string
-var Endpoint string
-var ObjectURLPrefix string
+const OSSAccessKeyID string
+const OSSAccessSecret string
+const BucketName string
+const Endpoint string
+const ObjectURLPrefix string
 
 //convert this txt file to .go file or copy the above variables to a new .go file to store your config

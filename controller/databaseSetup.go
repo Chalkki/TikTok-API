@@ -7,9 +7,9 @@ import (
 )
 
 var Db *gorm.DB
-var err error
 
 func ConnectDb() {
+	var err error
 	//Connect to the mysql database
 	dsn := MysqlConnectionLink + "?charset=utf8mb4"
 	Db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -24,5 +24,5 @@ func ConnectDb() {
 func SetupDb() {
 	//see gorm documentations of gorm for AutoMigrate function details
 	// https://gorm.io/docs/migration.html#Auto-Migration
-	Db.AutoMigrate(&User{}, &UserLoginInfo{}, &Video{}, &Comment{}, &UserFavoriteInfo{}, &VideoCommentInfo{})
+	Db.AutoMigrate(&User{}, &UserLoginInfo{}, &Video{}, &Comment{}, &UserFavoriteInfo{})
 }

@@ -24,7 +24,6 @@ import (
 //}
 
 //This is the loginInfo for the current user
-var loginInfo UserLoginInfo
 
 type UserLoginResponse struct {
 	Response
@@ -41,11 +40,9 @@ func Register(c *gin.Context) {
 	username := c.Query("username")
 	password := c.Query("password")
 	token := username + password
-	if Db == nil {
-		fmt.Println("Db is pointing to nil")
-	}
-	var existingUser User
+
 	//check whether there exists a user with the same username
+	var existingUser User
 	err := Db.Where("name = ?", username).First(&existingUser).Error
 	//if not, it means that the new username is valid.
 	//then the newUser information will be stored in the users table and the user_login_infos table.
@@ -59,9 +56,9 @@ func Register(c *gin.Context) {
 		Db.Create(&newUser)
 
 		newUserInfo := UserLoginInfo{
+			User:   newUser,
 			Token:  token,
 			UserId: newUser.Id,
-			User:   newUser,
 		}
 		Db.Create(&newUserInfo)
 		c.JSON(http.StatusOK, UserLoginResponse{
@@ -75,13 +72,17 @@ func Register(c *gin.Context) {
 		})
 	}
 }
-
+func (i *UserLoginInfo) GetUserInfo(token string) error {
+	err := Db.Where("token = ?", token).First(i).Error
+	return err
+}
 func Login(c *gin.Context) {
+
 	username := c.Query("username")
 	password := c.Query("password")
 	token := username + password
-	err := Db.Where("token = ?", token).First(&loginInfo).Error
-
+	var loginInfo UserLoginInfo
+	err := loginInfo.GetUserInfo(token)
 	// check if the account is stored in the user_login_infos table
 	// if yes, then we can allow the user to login
 	if err == nil {
@@ -107,7 +108,8 @@ func UserInfo(c *gin.Context) {
 	// if it exists in the table, return User to the server.
 	// otherwise, return errors
 	token := c.Query("token")
-	err := Db.Table("user_login_infos").Where("token = ?", token).Limit(1).Error
+	var loginInfo UserLoginInfo
+	err := loginInfo.GetUserInfo(token)
 	if err == nil {
 		c.JSON(http.StatusOK, UserResponse{
 			Response: Response{StatusCode: 0},

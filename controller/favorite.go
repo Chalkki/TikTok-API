@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
@@ -10,10 +11,12 @@ import (
 // FavoriteAction
 func FavoriteAction(c *gin.Context) {
 	token := c.Query("token")
-	if token != loginInfo.Token {
+	var loginInfo UserLoginInfo
+	err := loginInfo.GetUserInfo(token)
+	if err != nil {
 		c.JSON(http.StatusOK,
 			Response{StatusCode: 1,
-				StatusMsg: "The provided token does not match to the user's login token"})
+				StatusMsg: err.Error()})
 		return
 	}
 	// get the videoID from the request, and convert it from string to int64(if needed)
@@ -37,7 +40,7 @@ func FavoriteAction(c *gin.Context) {
 	// get the reference of video struct in the video list
 	// for add or subtract the favorite count
 	var video *Video
-	for _, v := range videoList {
+	for _, v := range feedVideoList {
 		if videoID == v.Id {
 			video = &v
 			break
@@ -77,7 +80,7 @@ func FavoriteAction(c *gin.Context) {
 			video.IsFavorite = false
 		}
 
-		tx.Model(&video).Update("favorite_count", video.FavoriteCount)
+		tx.Model(video).Update("favorite_count", video.FavoriteCount)
 		if err != nil {
 			c.JSON(http.StatusOK,
 				Response{StatusCode: 1,
@@ -89,12 +92,39 @@ func FavoriteAction(c *gin.Context) {
 	})
 }
 
-// FavoriteList all users have same favorite video list
+// FavoriteList display the favorite list of the current user
 func FavoriteList(c *gin.Context) {
-	//c.JSON(http.StatusOK, VideoListResponse{
-	//	Response: Response{
-	//		StatusCode: 0,
-	//	},
-	//	VideoList: DemoVideos,
-	//})
+
+	token := c.Query("token")
+	err := Db.Table("user_login_infos").Where("token = ?", token).Limit(1).Error
+	if err != nil {
+		c.JSON(http.StatusOK, VideoListResponse{
+			Response:  Response{StatusCode: 1, StatusMsg: "Invalid token"},
+			VideoList: nil,
+		})
+		return
+	}
+	favoriteVideoList := make([]Video, 0)
+	var userFavoriteinfos []UserFavoriteInfo
+	Db.Transaction(func(tx *gorm.DB) error {
+		err = tx.Table("user_favorite_infos").
+			Where("token = ?", token).
+			Find(&userFavoriteinfos).
+			Error
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		} else if err == nil {
+			for i, _ := range userFavoriteinfos {
+				var video Video
+				tx.Where("id = ?", userFavoriteinfos[i].VideoId).First(&video)
+				favoriteVideoList = append(favoriteVideoList, video)
+			}
+		}
+
+		c.JSON(http.StatusOK, VideoListResponse{
+			Response:  Response{StatusCode: 0},
+			VideoList: favoriteVideoList,
+		})
+		return nil
+	})
 }

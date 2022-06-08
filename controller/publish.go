@@ -18,11 +18,11 @@ type VideoListResponse struct {
 // Publish check token then save upload file to public directory
 func Publish(c *gin.Context) {
 	token := c.PostForm("token")
-	fmt.Println("the provided token is ", token)
-	fmt.Println("the login token is", loginInfo.Token)
-	if token != loginInfo.Token {
+	var loginInfo UserLoginInfo
+	err := loginInfo.GetUserInfo(token)
+	if err != nil {
 		c.JSON(http.StatusOK, Response{StatusCode: 1,
-			StatusMsg: "The provided token does not match with the current token"})
+			StatusMsg: err.Error()})
 		return
 	}
 
@@ -105,7 +105,8 @@ func PublishList(c *gin.Context) {
 
 	// search for the token in the loginInfo table that matched to the token provided by the client.
 	// if the token doesn't match to each other, the server will inform an error to client.
-	err := Db.Where("token = ?", token).First(&loginInfo).Error
+	var loginInfo UserLoginInfo
+	err := loginInfo.GetUserInfo(token)
 	if err != nil {
 		c.JSON(http.StatusOK, VideoListResponse{
 			Response: Response{

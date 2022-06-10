@@ -15,7 +15,7 @@ type VideoListResponse struct {
 	VideoList []Video `json:"video_list"`
 }
 
-// Publish check token then save upload file to public directory
+// Publish publish video to the oss filesystem (database) with related sql database record
 func Publish(c *gin.Context) {
 	token := c.PostForm("token")
 	var loginInfo UserLoginInfo
@@ -90,36 +90,18 @@ func Publish(c *gin.Context) {
 		})
 		return
 	}
-
 	c.JSON(http.StatusOK, Response{
 		StatusCode: 0,
 		StatusMsg:  finalName + " uploaded successfully",
 	})
 }
 
-// PublishList all users have same publish video list
+// PublishList Search for all the videos uploaded by the user
+//in the videos' table in descending way and provide them to the client
 func PublishList(c *gin.Context) {
 	var videoList []Video
 	userID := c.Query("user_id")
-	token := c.Query("token")
-
-	// search for the token in the loginInfo table that matched to the token provided by the client.
-	// if the token doesn't match to each other, the server will inform an error to client.
-	var loginInfo UserLoginInfo
-	err := loginInfo.GetUserInfo(token)
-	if err != nil {
-		c.JSON(http.StatusOK, VideoListResponse{
-			Response: Response{
-				StatusCode: 1,
-				StatusMsg:  "User not verified, please login again and try",
-			},
-		})
-		return
-	}
-
-	// Search for all the videos uploaded by the user
-	//in the videos' table in descending way and provide them to the client
-	err = Db.Table("videos").
+	err := Db.Table("videos").
 		Where("author_id = ?", userID).
 		Order("id DESC").
 		Find(&videoList).Error

@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-//see details in the documentations of aliyun oss api
+//UploadObject see details in the documentations of aliyun oss api
 // "https://help.aliyun.com/document_detail/32145.html"
 func UploadObject(objectName string, filePath string) error {
 	// create a new OSS client instance
@@ -33,7 +33,7 @@ func UploadObject(objectName string, filePath string) error {
 	return nil
 }
 
-//Get the snapshot from the video using open-source ffmpeg tool
+//UploadVideo Get the snapshot from the video using open-source ffmpeg tool
 //Upload the video and snapshot stored in the public file
 func UploadVideo(videoName string, snapShotName string, videoFilePath string) error {
 
@@ -49,10 +49,14 @@ func UploadVideo(videoName string, snapShotName string, videoFilePath string) er
 	if err != nil {
 		return err
 	}
+	//once the video and cover uploaded to the oss filesystem, we can delete the
+	//files stored in the ./public
+	defer os.Remove(videoFilePath)
+	defer os.Remove("./public/" + snapShotName)
 	return nil
 }
 
-//see details at "https://github.com/u2takey/ffmpeg-go"
+//ExampleReadFrameAsJpeg see details at "https://github.com/u2takey/ffmpeg-go"
 func ExampleReadFrameAsJpeg(inFileName string, frameNum int) io.Reader {
 	buf := bytes.NewBuffer(nil)
 	err := ffmpeg.Input(inFileName).
@@ -66,11 +70,8 @@ func ExampleReadFrameAsJpeg(inFileName string, frameNum int) io.Reader {
 	return buf
 }
 
-// get the first frame of the uploaded video
+// getSnapShot get the first frame of the uploaded video
 func getSnapShot(snapShotName string, videoFilePath string) error {
-	//because we use "id-video.mp4" e.g. "1-video.mp4" as the video name, we need to split the videoName and
-	//get the id of the video
-
 	reader := ExampleReadFrameAsJpeg(videoFilePath, 1)
 	img, err := imaging.Decode(reader)
 	if err != nil {

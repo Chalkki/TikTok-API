@@ -8,6 +8,7 @@ import (
 
 var Db *gorm.DB
 
+//ConnectDb Connect to the mysql database
 func ConnectDb() {
 	var err error
 	//Connect to the mysql database
@@ -21,8 +22,8 @@ func ConnectDb() {
 	SetupDb()
 }
 
+//SetupDb see gorm documentations of gorm for AutoMigrate function details
+// https://gorm.io/docs/migration.html#Auto-Migration
 func SetupDb() {
-	//see gorm documentations of gorm for AutoMigrate function details
-	// https://gorm.io/docs/migration.html#Auto-Migration
-	Db.AutoMigrate(&User{}, &UserLoginInfo{}, &Video{}, &Comment{}, &UserFavoriteInfo{})
+	Db.AutoMigrate(&User{}, &UserLoginInfo{}, &Video{}, &Comment{}, &UserFavoriteInfo{}, &UserFollowInfo{})
 }

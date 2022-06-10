@@ -8,21 +8,6 @@ import (
 	"net/http"
 )
 
-// usersLoginInfo use map to store user info, and key is username+password for demo
-// user data will be cleared every time the server starts
-// test data: username=zhanglei, password=douyin
-
-// this will be deleted soon, and you do not have a test user in the beginning, please register then test
-//var usersLoginInfo = map[string]User{
-//	"zhangleidouyin": {
-//		Id:            1,
-//		Name:          "zhanglei",
-//		FollowCount:   10,
-//		FollowerCount: 5,
-//		IsFollow:      true,
-//	},
-//}
-
 //This is the loginInfo for the current user
 
 type UserLoginResponse struct {
@@ -36,6 +21,7 @@ type UserResponse struct {
 	User User `json:"user"`
 }
 
+//Register The function for a guest to create a new account
 func Register(c *gin.Context) {
 	username := c.Query("username")
 	password := c.Query("password")
@@ -76,6 +62,9 @@ func (i *UserLoginInfo) GetUserInfo(token string) error {
 	err := Db.Where("token = ?", token).First(i).Error
 	return err
 }
+
+// Login check if the account is stored in the user_login_infos table
+// if yes, then we can allow the user to login
 func Login(c *gin.Context) {
 
 	username := c.Query("username")
@@ -83,8 +72,6 @@ func Login(c *gin.Context) {
 	token := username + password
 	var loginInfo UserLoginInfo
 	err := loginInfo.GetUserInfo(token)
-	// check if the account is stored in the user_login_infos table
-	// if yes, then we can allow the user to login
 	if err == nil {
 		c.JSON(http.StatusOK, UserLoginResponse{
 			Response: Response{StatusCode: 0},
@@ -103,26 +90,31 @@ func Login(c *gin.Context) {
 
 }
 
+//UserInfo return the user information of the current login user
 func UserInfo(c *gin.Context) {
-	// check token with the tokens stored in the user_login_infos table.
+	//check token with the tokens stored in the user_login_infos table.
 	// if it exists in the table, return User to the server.
 	// otherwise, return errors
 	token := c.Query("token")
+	userId := c.Query("user_id")
 	var loginInfo UserLoginInfo
+	var user User
 	err := loginInfo.GetUserInfo(token)
-	if err == nil {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 0},
-			User:     loginInfo.User,
+	if err != nil {
+		c.JSON(http.StatusOK, Response{
+			StatusCode: 1, StatusMsg: err.Error(),
 		})
-	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User doesn't exist"},
-		})
-	} else {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "Something's wrong, please retry later"},
-		})
+		return
 	}
-
+	err = Db.Where("id = ?", userId).First(&user).Error
+	if err != nil {
+		c.JSON(http.StatusOK, Response{
+			StatusCode: 1, StatusMsg: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, UserResponse{
+		Response: Response{StatusCode: 0},
+		User:     user,
+	})
 }

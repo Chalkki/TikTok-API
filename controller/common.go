@@ -42,21 +42,27 @@ type User struct {
 	IsFollow      bool   `json:"is_follow"`
 }
 
-// Store the UserLoginInformation
+// UserLoginInfo Store the user login information
 type UserLoginInfo struct {
 	Token  string `json:"token"`
 	UserId int64
 	User   User `gorm:"foreignKey:UserId;serializer:json" json:"-"`
 }
 
-// Store the User favorite relation
+// UserFavoriteInfo Store the user favorite relation
 type UserFavoriteInfo struct {
-	Token   string
+	UserId  int64
 	VideoId int64
 	Video   Video `gorm:"foreignKey:VideoId" json:"-"`
 }
 
-//It needs a scan method and a value method for gorm
+// UserFollowInfo Store the user follow information
+type UserFollowInfo struct {
+	UserId   int64
+	ToUserId int64
+}
+
+//Scan and Value. It needs a scan method and a value method for gorm
 //to serialize the customed data types.
 func (user *User) Scan(value interface{}) error {
 	val, ok := value.([]byte)

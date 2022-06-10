@@ -33,16 +33,16 @@ func FavoriteAction(c *gin.Context) {
 	action_type := c.Query("action_type")
 	// create the new userFavorite struct to store the information of favorite
 	var userFavorite = UserFavoriteInfo{
-		Token:   token,
+		UserId:  loginInfo.UserId,
 		VideoId: videoID,
 	}
 
-	// get the reference of video struct in the video list
+	// get the index of video struct in the video list
 	// for add or subtract the favorite count
-	var video *Video
-	for _, v := range feedVideoList {
-		if videoID == v.Id {
-			video = &v
+	var index int
+	for i, _ := range feedVideoList {
+		if videoID == feedVideoList[i].Id {
+			index = i
 			break
 		}
 	}
@@ -63,12 +63,12 @@ func FavoriteAction(c *gin.Context) {
 						StatusMsg: err.Error()})
 				return err
 			}
-			video.FavoriteCount++
-			video.IsFavorite = true
+			feedVideoList[index].FavoriteCount++
+			feedVideoList[index].IsFavorite = true
 
 		} else {
 			err = tx.
-				Where("token = ? AND video_id = ?", userFavorite.Token, userFavorite.VideoId).
+				Where("user_id = ? AND video_id = ?", userFavorite.UserId, userFavorite.VideoId).
 				Delete(&userFavorite).Error
 			if err != nil {
 				c.JSON(http.StatusOK,
@@ -76,11 +76,12 @@ func FavoriteAction(c *gin.Context) {
 						StatusMsg: err.Error()})
 				return err
 			}
-			video.FavoriteCount--
-			video.IsFavorite = false
+			feedVideoList[index].FavoriteCount--
+			feedVideoList[index].IsFavorite = false
 		}
-
-		tx.Model(video).Update("favorite_count", video.FavoriteCount)
+		var video Video
+		tx.Model(&video).Where("id = ?", videoID).
+			Update("favorite_count", feedVideoList[index].FavoriteCount)
 		if err != nil {
 			c.JSON(http.StatusOK,
 				Response{StatusCode: 1,
@@ -94,29 +95,27 @@ func FavoriteAction(c *gin.Context) {
 
 // FavoriteList display the favorite list of the current user
 func FavoriteList(c *gin.Context) {
-
-	token := c.Query("token")
-	err := Db.Table("user_login_infos").Where("token = ?", token).Limit(1).Error
+	userId, err := strconv.ParseInt(c.Query("user_id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusOK, VideoListResponse{
-			Response:  Response{StatusCode: 1, StatusMsg: "Invalid token"},
-			VideoList: nil,
+		c.JSON(http.StatusOK, Response{
+			StatusCode: 1, StatusMsg: err.Error(),
 		})
-		return
 	}
+
 	favoriteVideoList := make([]Video, 0)
-	var userFavoriteinfos []UserFavoriteInfo
+	var userFavoriteInfos []UserFavoriteInfo
+
 	Db.Transaction(func(tx *gorm.DB) error {
 		err = tx.Table("user_favorite_infos").
-			Where("token = ?", token).
-			Find(&userFavoriteinfos).
+			Where("user_id = ?", userId).
+			Find(&userFavoriteInfos).
 			Error
 		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		} else if err == nil {
-			for i, _ := range userFavoriteinfos {
+			for i, _ := range userFavoriteInfos {
 				var video Video
-				tx.Where("id = ?", userFavoriteinfos[i].VideoId).First(&video)
+				tx.Where("id = ?", userFavoriteInfos[i].VideoId).First(&video)
 				favoriteVideoList = append(favoriteVideoList, video)
 			}
 		}

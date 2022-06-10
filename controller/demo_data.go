@@ -1,5 +1,7 @@
 package controller
 
+//this file has no practical use, just for you to better understand the structs
+
 var DemoVideos = []Video{
 	{
 		Id:            1,

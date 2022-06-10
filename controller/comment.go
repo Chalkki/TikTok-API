@@ -17,7 +17,7 @@ type CommentActionResponse struct {
 	Comment Comment `json:"comment,omitempty"`
 }
 
-// CommentAction no practical effect, just check if token is valid
+// CommentAction leave a comment to a video
 func CommentAction(c *gin.Context) {
 	token := c.Query("token")
 	actionType := c.Query("action_type")
@@ -50,9 +50,10 @@ func CommentAction(c *gin.Context) {
 		}
 		//start of the transaction to create a new comment in comments table
 		//the video's CommentCount would increment
+		//a new comment would be created in the comments table
 		tx := Db.Begin()
 		var video Video
-		err = tx.First(&video).Where("id = ?", videoId).Error
+		err = tx.First(&video, videoId).Error
 		if err != nil {
 			c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 			return
@@ -119,6 +120,8 @@ func CommentAction(c *gin.Context) {
 func CommentList(c *gin.Context) {
 	var commentList []Comment
 	videoId, _ := strconv.ParseInt(c.Query("video_id"), 10, 64)
+	// sort the comments by descending comment id would be an easier way than comparing the date
+	//(less conversion between string and int)
 	err := Db.Where("video_id = ?", videoId).Order("id DESC").Find(&commentList).Error
 	if err != nil {
 		c.JSON(http.StatusOK, Response{

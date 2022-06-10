@@ -37,14 +37,14 @@ func Feed(c *gin.Context) {
 			return err
 		}
 		if exist {
-			var video *Video
-			var userFavoriteinfo UserFavoriteInfo
 			var userLoginInfo UserLoginInfo
-			var userFollowInfo UserFollowInfo
 			if err = tx.Where("token = ?", token).First(&userLoginInfo).Error; err != nil {
 				return err
 			}
 			for i, _ := range feedVideoList {
+				var video *Video
+				var userFollowInfo UserFollowInfo
+				var userFavoriteinfo UserFavoriteInfo
 				video = &feedVideoList[i]
 				err = tx.Table("user_favorite_infos").
 					Where("user_id = ?", userLoginInfo.UserId).
@@ -55,6 +55,9 @@ func Feed(c *gin.Context) {
 				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 					return err
+				}
+				if err == nil && userFavoriteinfo.VideoId != 0 {
+					video.IsFavorite = true
 				}
 				err = tx.Table("user_follow_infos").
 					Where("user_id = ?", userLoginInfo.UserId).
@@ -68,9 +71,6 @@ func Feed(c *gin.Context) {
 				}
 				// in case the table is empty, we need to check whether the query returns empty struct
 				// if the record could be found in the userFavoriteInfos, we can see the video.IsFavorite to true
-				if err == nil && userFavoriteinfo.VideoId != 0 {
-					video.IsFavorite = true
-				}
 				if err == nil && userFollowInfo.UserId != 0 {
 					video.Author.IsFollow = true
 				}

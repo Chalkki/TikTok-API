@@ -130,6 +130,7 @@ func FollowList(c *gin.Context) {
 			c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 			return
 		}
+		user.IsFollow = true
 		userList = append(userList, user)
 	}
 	c.JSON(http.StatusOK, UserListResponse{
@@ -143,8 +144,13 @@ func FollowList(c *gin.Context) {
 // FollowerList similar to what FollowList does, but change the direction for query
 func FollowerList(c *gin.Context) {
 	user_id := c.Query("user_id")
+	var userFollowList []UserFollowInfo
 	var userFollowerList []UserFollowInfo
 	var userList = make([]User, 0)
+	if err := Db.Where("user_id = ?", user_id).Find(&userFollowList).Error; err != nil {
+		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
+		return
+	}
 	if err := Db.Where("to_user_id = ?", user_id).Find(&userFollowerList).Error; err != nil {
 		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 		return
@@ -154,6 +160,12 @@ func FollowerList(c *gin.Context) {
 		if err := Db.Where("id = ?", userFollowerList[i].UserId).First(&user).Error; err != nil {
 			c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 			return
+		}
+		for j, _ := range userFollowList {
+			if userFollowList[j].ToUserId == userFollowerList[i].UserId {
+				user.IsFollow = true
+				break
+			}
 		}
 		userList = append(userList, user)
 	}

@@ -118,8 +118,14 @@ func RelationAction(c *gin.Context) {
 // return the users list according to follow details
 func FollowList(c *gin.Context) {
 	user_id := c.Query("user_id")
+	var userLoginInfo UserLoginInfo
+	token := c.Query("token")
+	if token != "" {
+		userLoginInfo.GetUserInfo(token)
+	}
 	var userFollowList []UserFollowInfo
 	var userList = make([]User, 0)
+	var loginUserFollowInfo UserFollowInfo
 	if err := Db.Where("user_id = ?", user_id).Find(&userFollowList).Error; err != nil {
 		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 		return
@@ -130,7 +136,10 @@ func FollowList(c *gin.Context) {
 			c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 			return
 		}
-		user.IsFollow = true
+		Db.Where("user_id = ?, to_user_id", userLoginInfo.UserId, userFollowList[i].ToUserId).First(&loginUserFollowInfo)
+		if userLoginInfo.UserId != 0 && loginUserFollowInfo.ToUserId == userFollowList[i].ToUserId {
+			user.IsFollow = true
+		}
 		userList = append(userList, user)
 	}
 	c.JSON(http.StatusOK, UserListResponse{
@@ -144,13 +153,14 @@ func FollowList(c *gin.Context) {
 // FollowerList similar to what FollowList does, but change the direction for query
 func FollowerList(c *gin.Context) {
 	user_id := c.Query("user_id")
-	var userFollowList []UserFollowInfo
+	token := c.Query("token")
+	var userLoginInfo UserLoginInfo
+	if token != "" {
+		userLoginInfo.GetUserInfo(token)
+	}
 	var userFollowerList []UserFollowInfo
 	var userList = make([]User, 0)
-	if err := Db.Where("user_id = ?", user_id).Find(&userFollowList).Error; err != nil {
-		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
-		return
-	}
+	var loginUserFollowInfo UserFollowInfo
 	if err := Db.Where("to_user_id = ?", user_id).Find(&userFollowerList).Error; err != nil {
 		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 		return
@@ -161,11 +171,9 @@ func FollowerList(c *gin.Context) {
 			c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 			return
 		}
-		for j, _ := range userFollowList {
-			if userFollowList[j].ToUserId == userFollowerList[i].UserId {
-				user.IsFollow = true
-				break
-			}
+		Db.Where("user_id = ?, to_user_id", userLoginInfo.UserId, userFollowerList[i].UserId).First(&loginUserFollowInfo)
+		if loginUserFollowInfo.UserId != 0 && loginUserFollowInfo.ToUserId == userFollowerList[i].UserId {
+			user.IsFollow = true
 		}
 		userList = append(userList, user)
 	}

@@ -38,42 +38,43 @@ func Feed(c *gin.Context) {
 		}
 		if exist {
 			var userLoginInfo UserLoginInfo
+			var userFollowInfos []UserFollowInfo
+			var userFavoriteinfos []UserFavoriteInfo
 			if err = tx.Where("token = ?", token).First(&userLoginInfo).Error; err != nil {
+				return err
+			}
+			err = tx.Table("user_favorite_infos").
+				Where("user_id = ?", userLoginInfo.UserId).
+				Find(&userFavoriteinfos).
+				Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
+				return err
+			}
+			err = tx.Table("user_follow_infos").
+				Where("user_id = ?", userLoginInfo.UserId).
+				Find(&userFollowInfos).
+				Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 				return err
 			}
 			for i, _ := range feedVideoList {
 				var video *Video
-				var userFollowInfo UserFollowInfo
-				var userFavoriteinfo UserFavoriteInfo
 				video = &feedVideoList[i]
-				err = tx.Table("user_favorite_infos").
-					Where("user_id = ?", userLoginInfo.UserId).
-					Where("video_id = ?", video.Id).
-					Limit(1).
-					Find(&userFavoriteinfo).
-					Error
-				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-					c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
-					return err
+				for j, _ := range userFavoriteinfos {
+					if err == nil && userFavoriteinfos[j].VideoId == video.Id {
+						video.IsFavorite = true
+						break
+					}
 				}
-				if err == nil && userFavoriteinfo.VideoId != 0 {
-					video.IsFavorite = true
+				for j, _ := range userFollowInfos {
+					if err == nil && userFollowInfos[j].ToUserId == video.AuthorID {
+						video.Author.IsFollow = true
+						break
+					}
 				}
-				err = tx.Table("user_follow_infos").
-					Where("user_id = ?", userLoginInfo.UserId).
-					Where("to_user_id = ?", video.AuthorID).
-					Limit(1).
-					Find(&userFollowInfo).
-					Error
-				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-					c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
-					return err
-				}
-				// in case the table is empty, we need to check whether the query returns empty struct
-				// if the record could be found in the userFavoriteInfos, we can see the video.IsFavorite to true
-				if err == nil && userFollowInfo.UserId != 0 {
-					video.Author.IsFollow = true
-				}
+
 			}
 		}
 		c.JSON(http.StatusOK, FeedResponse{
